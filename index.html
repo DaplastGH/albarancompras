@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Registro de albaranes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+
+  background-color: #f7f7f7;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+
+/* ========================= */
+/* CONTENEDOR */
+/* ========================= */
+
+.page-container {
+  width: 100%;
+  padding: 40px 20px;
+}
+
+.solicitud-box {
+  width: 100%;
+  max-width: 700px;
+
+  margin: 0 auto;
+
+  background-color: #ffffff;
+
+  padding: 35px;
+
+  border-radius: 10px;
+
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+
+/* ========================= */
+/* LOGO */
+/* ========================= */
+
+.logo-daplast {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.logo-daplast img {
+  max-width: 200px;
+  height: auto;
+}
+
+
+/* ========================= */
+/* TÍTULOS */
+/* ========================= */
+
+h1 {
+  text-align: center;
+
+  color: #333333;
+
+  margin-top: 0;
+  margin-bottom: 35px;
+
+  font-size: 28px;
+}
+
+.section-title {
+  font-weight: bold;
+
+  font-size: 21px;
+
+  color: #333333;
+
+  margin-top: 30px;
+  margin-bottom: 20px;
+
+  padding-left: 10px;
+
+  border-left: 4px solid #c5d800;
+}
+
+.hint {
+  color: #666666;
+  margin: -8px 0 18px;
+  line-height: 1.4;
+}
+
+
+/* ========================= */
+/* FORMULARIOS */
+/* ========================= */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+label {
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #333333;
+}
+
+.required {
+  color: #c00;
+}
+
+input {
+  width: 100%;
+
+  padding: 11px;
+
+  border: 1px solid #cccccc;
+
+  border-radius: 4px;
+
+  font-size: 14px;
+
+  background-color: white;
+}
+
+input:focus {
+  outline: none;
+
+  border-color: #044a80;
+
+  box-shadow: 0 0 0 2px rgba(4, 74, 128, 0.08);
+}
+
+
+/* ========================= */
+/* BOTONES */
+/* ========================= */
+
+.primary-btn,
+.secondary-btn {
+  font-size: 14px;
+
+  padding: 11px 20px;
+
+  border-radius: 5px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.primary-btn {
+  width: 100%;
+
+  border: none;
+
+  background-color: #c5d800;
+
+  color: #044a80;
+
+  margin-top: 25px;
+}
+
+.primary-btn:hover {
+  background-color: #b8ca00;
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}
+
+.secondary-btn {
+  border: 2px solid #044a80;
+
+  background-color: white;
+
+  color: #333333;
+}
+
+.secondary-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-row .secondary-btn {
+  flex: 1 1 30%;
+  padding: 16px 10px;
+}
+
+
+/* ========================= */
+/* MINIATURAS Y PDF */
+/* ========================= */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.thumb {
+  position: relative;
+
+  aspect-ratio: 3 / 4;
+
+  border-radius: 6px;
+
+  overflow: hidden;
+
+  border: 1px solid #e5e5e5;
+
+  background-color: #fafafa;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb .remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+
+  width: 26px;
+  height: 26px;
+
+  padding: 0;
+
+  border: none;
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.92);
+
+  color: #c00000;
+
+  font-size: 14px;
+
+  cursor: pointer;
+}
+
+.pdf-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 18px;
+
+  padding: 14px 16px;
+
+  border: 1px solid #e5e5e5;
+
+  border-radius: 8px;
+
+  background-color: #fafafa;
+}
+
+.pdf-name {
+  font-weight: bold;
+  color: #333333;
+  word-break: break-all;
+}
+
+.pdf-box small {
+  color: #666666;
+}
+
+.pdf-box .remove-btn {
+  border: none;
+  background: transparent;
+  color: #c00000;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+
+.pdf-box .remove-btn:hover {
+  opacity: 0.7;
+}
+
+
+/* ========================= */
+/* RESUMEN */
+/* ========================= */
+
+.summary-box {
+  background-color: #f0f8f4;
+
+  padding: 15px;
+
+  border-radius: 8px;
+
+  margin-top: 25px;
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+}
+
+.summary-box span {
+  margin-left: 10px;
+
+  font-size: 18px;
+
+  color: #044a80;
+}
+
+
+/* ========================= */
+/* MENSAJES */
+/* ========================= */
+
+.error-box {
+  padding: 15px;
+  margin-top: 20px;
+
+  border-radius: 10px;
+
+  background: #fdecea;
+
+  color: #b00020;
+
+  text-align: center;
+}
+
+.info-box {
+  padding: 15px;
+  margin-top: 20px;
+
+  border-radius: 10px;
+
+  background: #f8f8f8;
+
+  color: #333333;
+
+  text-align: center;
+}
+
+
+/* ========================= */
+/* SPINNER */
+/* ========================= */
+
+.spinner-container {
+  text-align: center;
+
+  margin-top: 20px;
+}
+
+.loader {
+  border: 6px solid #f3f3f3;
+
+  border-top: 6px solid #7ee134;
+
+  border-radius: 50%;
+
+  width: 40px;
+  height: 40px;
+
+  animation: spin 1s linear infinite;
+
+  margin: auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* ========================= */
+/* RESULTADO */
+/* ========================= */
+
+.resultado-box {
+  margin-top: 30px;
+
+  padding: 25px;
+
+  background-color: #f0f8f4;
+
+  border-radius: 8px;
+
+  text-align: center;
+}
+
+.resultado-box h2 {
+  color: #333333;
+
+  margin-top: 0;
+}
+
+.resultado-box p {
+  color: #333333;
+  margin-bottom: 25px;
+}
+
+
+/* ========================= */
+/* RESPONSIVE */
+/* ========================= */
+
+@media (max-width: 767px) {
+
+  .page-container {
+    padding: 15px;
+  }
+
+  .solicitud-box {
+    padding: 20px 15px;
+  }
+
+  h1 {
+    font-size: 23px;
+  }
+
+  .section-title {
+    font-size: 19px;
+  }
+
+  .btn-row .secondary-btn {
+    flex: 1 1 100%;
+  }
+
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+</style>
+</head>
+<body>
+<div class="page-container">
+  <div class="solicitud-box">
+
+    <div class="logo-daplast" id="logoWrap" hidden>
+      <img id="logo" alt="Logo">
+    </div>
+
+    <h1>Registro de albaranes</h1>
+
+    <!-- ===== FORMULARIO ===== -->
+    <div id="formView">
+
+      <div class="section-title">Albarán</div>
+      <p class="hint">Haz una foto, elige imágenes de la galería o sube un PDF. Si el albarán tiene varias hojas, añade una foto de cada una.</p>
+
+      <div class="btn-row">
+        <button type="button" class="secondary-btn" id="btnCam">📷 Hacer foto</button>
+        <button type="button" class="secondary-btn" id="btnGal">🖼️ Galería</button>
+        <button type="button" class="secondary-btn" id="btnPdf">📄 Subir PDF</button>
+      </div>
+
+      <input id="inCam" type="file" accept="image/*" capture="environment" hidden>
+      <input id="inGal" type="file" accept="image/*" multiple hidden>
+      <input id="inPdf" type="file" accept="application/pdf,.pdf" hidden>
+
+      <div class="grid" id="grid"></div>
+      <div id="pdfSlot"></div>
+
+      <div class="summary-box">
+        <strong>Documentos añadidos</strong>
+        <span id="count">0</span>
+      </div>
+
+      <div id="msg"></div>
+
+      <div class="spinner-container" id="spinner" hidden>
+        <div class="loader"></div>
+        <p>Enviando albarán…</p>
+      </div>
+
+      <button type="button" class="primary-btn" id="send" disabled>Enviar albarán</button>
+    </div>
+
+    <!-- ===== RESULTADO ===== -->
+    <div class="resultado-box" id="doneView" hidden>
+      <h2>✅ Albarán enviado</h2>
+      <p>Se procesará y se archivará automáticamente.</p>
+      <button type="button" class="secondary-btn" id="again">Escanear otro albarán</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ===== CONFIGURACIÓN ===== */
+const FLOW_URL   = "PEGA_AQUI_LA_URL_DEL_FLUJO";  // URL del disparador HTTP de Power Automate
+const LOGO_URL   = "https://daplast.com/wp-content/uploads/2024/10/Marca-Daplast-principal-3.png";  // dejar "" para no mostrar logo
+const MAX_PX     = 1800;                          // lado mayor de cada foto
+const QUALITY    = 0.75;                          // calidad JPEG
+const MAX_PDF_MB = 15;                            // tamaño máximo de un PDF subido
+/* ========================= */
+
+const $ = id => document.getElementById(id);
+
+let photos = [];   // { data, w, h }
+let pdf = null;    // { name, size, base64 }
+
+if (LOGO_URL) {
+  $("logo").onerror = () => { $("logoWrap").hidden = true; };   // si el logo no carga, no se muestra
+  $("logo").src = LOGO_URL;
+  $("logoWrap").hidden = false;
+}
+
+function showMsg(text, cls) {
+  const d = document.createElement("div");
+  d.className = cls;
+  d.textContent = text;
+  $("msg").replaceChildren(d);
+}
+function clearMsg() { $("msg").replaceChildren(); }
+
+/* ---------- Lectura de archivos ---------- */
+
+function readBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1]);
+    r.onerror = () => reject(new Error("No se pudo leer el archivo"));
+    r.readAsDataURL(file);
+  });
+}
+
+async function loadBitmap(file) {
+  if (window.createImageBitmap) {
+    try { return await createImageBitmap(file, { imageOrientation: "from-image" }); } catch (e) {}
+  }
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload  = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Formato de imagen no compatible")); };
+    img.src = url;
+  });
+}
+
+async function compress(file) {
+  const bmp = await loadBitmap(file);
+  const sw = bmp.naturalWidth || bmp.width;
+  const sh = bmp.naturalHeight || bmp.height;
+  const r = Math.min(1, MAX_PX / Math.max(sw, sh));
+  const w = Math.round(sw * r), h = Math.round(sh * r);
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bmp, 0, 0, w, h);
+  return { data: c.toDataURL("image/jpeg", QUALITY), w, h };
+}
+
+/* ---------- Pintar lista ---------- */
+
+function render() {
+  const grid = $("grid");
+  grid.replaceChildren();
+  photos.forEach((p, i) => {
+    const d = document.createElement("div");
+    d.className = "thumb";
+    const img = document.createElement("img");
+    img.src = p.data;
+    img.alt = "Foto " + (i + 1);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "remove-btn";
+    b.title = "Quitar";
+    b.textContent = "✕";
+    b.onclick = () => { photos.splice(i, 1); clearMsg(); render(); };
+    d.append(img, b);
+    grid.appendChild(d);
+  });
+
+  const slot = $("pdfSlot");
+  slot.replaceChildren();
+  if (pdf) {
+    const box = document.createElement("div");
+    box.className = "pdf-box";
+    const info = document.createElement("div");
+    const nm = document.createElement("div");
+    nm.className = "pdf-name";
+    nm.textContent = "📄 " + pdf.name;
+    const sz = document.createElement("small");
+    sz.textContent = (pdf.size / 1048576).toFixed(1) + " MB";
+    info.append(nm, sz);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "remove-btn";
+    b.title = "Quitar";
+    b.textContent = "✕";
+    b.onclick = () => { pdf = null; clearMsg(); render(); };
+    box.append(info, b);
+    slot.appendChild(box);
+  }
+
+  const n = pdf ? 1 : photos.length;
+  $("count").textContent = pdf ? "1 PDF" : (n === 1 ? "1 foto" : n + " fotos");
+  $("send").disabled = n === 0;
+}
+
+/* ---------- Añadir fotos / PDF ---------- */
+
+async function addImages(fileList) {
+  clearMsg();
+  const files = Array.from(fileList);
+  if (!files.length) return;
+  let replaced = false;
+  if (pdf) { pdf = null; replaced = true; }
+  let failed = 0;
+  for (const f of files) {
+    try { photos.push(await compress(f)); } catch (e) { failed++; }
+  }
+  render();
+  if (failed) showMsg("No se pudo leer " + failed + " imagen(es). Prueba a hacer la foto de nuevo.", "error-box");
+  else if (replaced) showMsg("Se ha quitado el PDF: un albarán se envía como fotos o como PDF, no ambos.", "info-box");
+}
+
+async function addPdf(file) {
+  clearMsg();
+  if (!file) return;
+  if (file.size > MAX_PDF_MB * 1048576) {
+    return showMsg("El PDF pesa más de " + MAX_PDF_MB + " MB. Prueba a hacer fotos o a reducir el PDF.", "error-box");
+  }
+  try {
+    const base64 = await readBase64(file);
+    const replaced = photos.length > 0;
+    photos = [];
+    pdf = { name: file.name, size: file.size, base64 };
+    render();
+    if (replaced) showMsg("Se han quitado las fotos: un albarán se envía como fotos o como PDF, no ambos.", "info-box");
+  } catch (e) {
+    showMsg("No se pudo leer el PDF.", "error-box");
+  }
+}
+
+$("btnCam").onclick = () => $("inCam").click();
+$("btnGal").onclick = () => $("inGal").click();
+$("btnPdf").onclick = () => $("inPdf").click();
+
+$("inCam").addEventListener("change", async e => { await addImages(e.target.files); e.target.value = ""; });
+$("inGal").addEventListener("change", async e => { await addImages(e.target.files); e.target.value = ""; });
+$("inPdf").addEventListener("change", async e => { await addPdf(e.target.files[0]); e.target.value = ""; });
+
+/* ---------- Fotos → PDF (en el propio móvil) ---------- */
+
+function buildPdf() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const PW = 210, PH = 297, M = 5;
+  photos.forEach((p, i) => {
+    if (i) doc.addPage();
+    const r = Math.min((PW - 2 * M) / p.w, (PH - 2 * M) / p.h);
+    const w = p.w * r, h = p.h * r;
+    doc.addImage(p.data, "JPEG", (PW - w) / 2, (PH - h) / 2, w, h);
+  });
+  return doc.output("datauristring").split(",")[1];   // base64 sin cabecera
+}
+
+/* ---------- Enviar ---------- */
+
+function setBusy(busy) {
+  $("spinner").hidden = !busy;
+  $("send").disabled = busy;
+  ["btnCam", "btnGal", "btnPdf"].forEach(id => $(id).disabled = busy);
+}
+
+$("send").onclick = async () => {
+  clearMsg();
+  if (FLOW_URL.startsWith("PEGA_")) return showMsg("Falta configurar FLOW_URL en el HTML.", "error-box");
+  if (!pdf && !photos.length) return;
+
+  setBusy(true);
+  try {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const body = {
+      nombreTemporal: "albaran_" + stamp + ".pdf",
+      origen: pdf ? "pdf" : "fotos",
+      fotos: pdf ? null : photos.length,
+      pdfBase64: pdf ? pdf.base64 : buildPdf()
+    };
+    // text/plain + no-cors evita el bloqueo CORS de los disparadores HTTP de Power Automate
+    await fetch(FLOW_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(body)
+    });
+    photos = []; pdf = null; render();
+    $("formView").hidden = true;
+    $("doneView").hidden = false;
+  } catch (err) {
+    showMsg("No se pudo enviar. Comprueba la conexión e inténtalo de nuevo.", "error-box");
+  }
+  setBusy(false);
+  render();
+};
+
+$("again").onclick = () => {
+  $("doneView").hidden = true;
+  $("formView").hidden = false;
+  clearMsg();
+};
+
+render();
+</script>
+</body>
+</html>
