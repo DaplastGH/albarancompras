@@ -215,8 +215,72 @@ input:focus {
 }
 
 .btn-row .secondary-btn {
-  flex: 1 1 30%;
+  flex: 1 1 40%;
   padding: 16px 10px;
+}
+
+.btn-row .cam-btn {
+  flex: 1 1 100%;
+}
+
+
+/* ========================= */
+/* ALBARANES */
+/* ========================= */
+
+.albaran-box {
+  border: 1px solid #e5e5e5;
+
+  border-radius: 8px;
+
+  padding: 20px;
+
+  margin-bottom: 15px;
+
+  background-color: #fafafa;
+}
+
+.albaran-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  margin-bottom: 15px;
+}
+
+.albaran-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333333;
+
+  padding-left: 10px;
+
+  border-left: 4px solid #c5d800;
+}
+
+.remove-link {
+  border: none;
+  background: transparent;
+  color: #c00000;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.remove-link:disabled {
+  opacity: 0.5;
+}
+
+.sheet-note {
+  margin: 10px 0 0;
+  color: #666666;
+}
+
+.add-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 5px;
 }
 
 
@@ -273,6 +337,24 @@ input:focus {
   cursor: pointer;
 }
 
+.thumb .tag {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  right: 36px;
+
+  padding: 2px 5px;
+
+  border-radius: 4px;
+
+  background: rgba(255, 255, 255, 0.92);
+
+  color: #333333;
+
+  font-size: 10px;
+  line-height: 1.25;
+}
+
 .opt-row {
   display: flex;
   align-items: center;
@@ -296,7 +378,7 @@ input:focus {
 
 .crop-status {
   min-height: 18px;
-  margin: 8px 0 0;
+  margin: 8px 0 16px;
   color: #666666;
 }
 
@@ -509,10 +591,6 @@ input:focus {
     font-size: 19px;
   }
 
-  .btn-row .secondary-btn {
-    flex: 1 1 100%;
-  }
-
   .grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -532,14 +610,7 @@ input:focus {
     <!-- ===== FORMULARIO ===== -->
     <div id="formView">
 
-      <div class="section-title">Albarán</div>
-      <p class="hint">Haz una foto, elige imágenes de la galería o sube un PDF. Si el albarán tiene varias hojas, añade una foto de cada una.</p>
-
-      <div class="btn-row">
-        <button type="button" class="secondary-btn" id="btnCam">📷 Hacer foto</button>
-        <button type="button" class="secondary-btn" id="btnGal">🖼️ Galería</button>
-        <button type="button" class="secondary-btn" id="btnPdf">📄 Subir PDF</button>
-      </div>
+      <p class="hint">Haz una foto de cada albarán. Si un albarán tiene varias hojas, añade más fotos dentro del mismo. Para otro albarán distinto, pulsa «Añadir otro albarán».</p>
 
       <div class="opt-row">
         <input type="checkbox" id="optCrop" checked>
@@ -547,15 +618,16 @@ input:focus {
       </div>
       <p class="crop-status" id="cropStatus"></p>
 
+      <div id="albaranes"></div>
+
+      <button type="button" class="secondary-btn add-btn" id="addAlb">➕ Añadir otro albarán</button>
+
       <input id="inCam" type="file" accept="image/*" capture="environment" hidden>
       <input id="inGal" type="file" accept="image/*" multiple hidden>
       <input id="inPdf" type="file" accept="application/pdf,.pdf" hidden>
 
-      <div class="grid" id="grid"></div>
-      <div id="pdfSlot"></div>
-
       <div class="summary-box">
-        <strong>Documentos añadidos</strong>
+        <strong>Albaranes a enviar</strong>
         <span id="count">0</span>
       </div>
 
@@ -563,7 +635,7 @@ input:focus {
 
       <div class="spinner-container" id="spinner" hidden>
         <div class="loader"></div>
-        <p>Enviando albarán…</p>
+        <p id="spinnerText">Enviando…</p>
       </div>
 
       <button type="button" class="primary-btn" id="send" disabled>Enviar albarán</button>
@@ -571,9 +643,9 @@ input:focus {
 
     <!-- ===== RESULTADO ===== -->
     <div class="resultado-box" id="doneView" hidden>
-      <h2>✅ Albarán enviado</h2>
+      <h2 id="doneTitle">✅ Albarán enviado</h2>
       <p>Se procesará y se archivará automáticamente.</p>
-      <button type="button" class="secondary-btn" id="again">Escanear otro albarán</button>
+      <button type="button" class="secondary-btn" id="again">Enviar más albaranes</button>
     </div>
 
   </div>
@@ -581,7 +653,7 @@ input:focus {
 
 <script>
 /* ===== CONFIGURACIÓN ===== */
-const FLOW_URL   = "https://default9057cb6da67347c7b025e86c6b54bd.2d.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/19/workflows/8f395d62d0224353b9f5c37544e9fd7e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=t2KhzetK1nk-sfHKZfqo28968BrrbRGtZEFs-KM05Oo";
+const FLOW_URL   = "PEGA_AQUI_LA_URL_DEL_FLUJO";  // URL del disparador HTTP de Power Automate
 const LOGO_URL   = "https://daplast.com/wp-content/uploads/2024/10/Marca-Daplast-principal-3.png";  // dejar "" para no mostrar logo
 const MAX_PX     = 1800;                          // lado mayor de cada foto
 const QUALITY    = 0.75;                          // calidad JPEG
@@ -591,9 +663,7 @@ const OPENCV_URL = "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-rel
 
 const $ = id => document.getElementById(id);
 
-let photos = [];   // { use: "crop" | "orig", orig: {data,w,h}, crop: {data,w,h} | null }
-let pdf = null;    // { name, size, base64 }
-let processing = false;
+let processing = false;   // procesando fotos (recorte)
 
 const cur = p => (p.use === "crop" && p.crop) ? p.crop : p.orig;
 
@@ -810,8 +880,9 @@ function warpDocument(canvas, q) {
 // Foto -> { orig, crop, use }. Si el recorte no es posible, se queda con la foto original.
 async function processFile(file, state) {
   const o = await compress(file);
-  const item = { use: "orig", orig: { data: o.data, w: o.w, h: o.h }, crop: null };
-  if (!$("optCrop").checked || state.cvFailed) return item;
+  const item = { use: "orig", orig: { data: o.data, w: o.w, h: o.h }, crop: null, why: "" };
+  if (!$("optCrop").checked) { item.why = "recorte desactivado"; return item; }
+  if (state.cvFailed) { item.why = "recorte no disponible"; return item; }
   try {
     await loadCv();
     const q = findDocument(o.canvas);
@@ -821,9 +892,12 @@ async function processFile(file, state) {
       item.use = "crop";
     } else {
       state.notFound++;
+      item.why = "no se detectó el folio";
     }
   } catch (e) {
     state.cvFailed = true;
+    state.err = (e && e.message) ? e.message : String(e);
+    item.why = "error: " + state.err;
   }
   return item;
 }
@@ -834,103 +908,186 @@ $("optCrop").addEventListener("change", () => {
   if ($("optCrop").checked) preloadCv();
 });
 
+let cvState = "";   // estado visible del recorte cuando no se está procesando nada
+
+function setCvState(t) {
+  cvState = t;
+  if (!processing) $("cropStatus").textContent = t;
+}
+
 function preloadCv() {
-  if (!$("optCrop").checked) return;
-  $("cropStatus").textContent = "Preparando el recorte automático… (solo la primera vez)";
+  if (!$("optCrop").checked) { setCvState(""); return; }
+  setCvState("⏳ Preparando el recorte automático… (solo la primera vez, unos 10 MB)");
   loadCv()
-    .then(() => { if (!processing) $("cropStatus").textContent = ""; })
-    .catch(() => { $("cropStatus").textContent = ""; });
+    .then(() => setCvState("✅ Recorte automático listo"))
+    .catch(e => setCvState("⚠️ No se pudo cargar el recorte automático (" + e.message + "). Puede que la red de la empresa bloquee cdn.jsdelivr.net."));
 }
 window.addEventListener("load", () => setTimeout(preloadCv, 300));
 
-/* ---------- Pintar lista ---------- */
+/* ---------- Albaranes (cada uno con sus fotos) ---------- */
 
-function render() {
-  const grid = $("grid");
-  grid.replaceChildren();
-  photos.forEach((p, i) => {
-    const d = document.createElement("div");
-    d.className = "thumb";
-    const img = document.createElement("img");
-    img.src = cur(p).data;
-    img.alt = "Foto " + (i + 1);
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "remove-btn";
-    b.title = "Quitar";
-    b.textContent = "✕";
-    b.onclick = () => { photos.splice(i, 1); clearMsg(); render(); };
-    d.append(img, b);
-    if (p.crop) {   // permite alternar entre la foto recortada y la original
-      const m = document.createElement("button");
-      m.type = "button";
-      m.className = "mode-btn";
-      m.textContent = p.use === "crop" ? "Ver original" : "Usar recorte";
-      m.onclick = () => { p.use = p.use === "crop" ? "orig" : "crop"; render(); };
-      d.appendChild(m);
-    }
-    grid.appendChild(d);
-  });
+let albaranes = [];     // { id, photos: [ {use, orig, crop, why} ], pdf: {name,size,base64} | null }
+let target = null;      // albarán al que irán los archivos que se elijan ahora
+let sending = false;
+let nextId = 1;
 
-  const slot = $("pdfSlot");
-  slot.replaceChildren();
-  if (pdf) {
-    const box = document.createElement("div");
-    box.className = "pdf-box";
-    const info = document.createElement("div");
-    const nm = document.createElement("div");
-    nm.className = "pdf-name";
-    nm.textContent = "📄 " + pdf.name;
-    const sz = document.createElement("small");
-    sz.textContent = (pdf.size / 1048576).toFixed(1) + " MB";
-    info.append(nm, sz);
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "remove-btn";
-    b.title = "Quitar";
-    b.textContent = "✕";
-    b.onclick = () => { pdf = null; clearMsg(); render(); };
-    box.append(info, b);
-    slot.appendChild(box);
-  }
+function newAlbaran() {
+  const a = { id: nextId++, photos: [], pdf: null };
+  albaranes.push(a);
+  return a;
+}
+newAlbaran();
+target = albaranes[0];
 
-  const n = pdf ? 1 : photos.length;
-  $("count").textContent = pdf ? "1 PDF" : (n === 1 ? "1 foto" : n + " fotos");
-  $("send").disabled = n === 0 || processing;
-  ["btnCam", "btnGal", "btnPdf"].forEach(id => $(id).disabled = processing);
+const isEmpty = a => !a.pdf && a.photos.length === 0;
+const isBusy  = () => processing || sending;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text) e.textContent = text;
+  return e;
 }
 
-/* ---------- Añadir fotos / PDF ---------- */
+function actionBtn(text, cls, onclick) {
+  const b = el("button", cls, text);
+  b.type = "button";
+  b.disabled = isBusy();
+  b.onclick = onclick;
+  return b;
+}
 
-async function addImages(fileList) {
+function render() {
+  const wrap = $("albaranes");
+  wrap.replaceChildren();
+
+  albaranes.forEach((a, idx) => {
+    const box = el("div", "albaran-box");
+
+    const head = el("div", "albaran-header");
+    head.appendChild(el("div", "albaran-title", "Albarán " + (idx + 1)));
+    if (albaranes.length > 1) {
+      head.appendChild(actionBtn("🗑 Quitar este albarán", "remove-link", () => removeAlbaran(a)));
+    }
+    box.appendChild(head);
+
+    const row = el("div", "btn-row");
+    row.append(
+      actionBtn(a.photos.length ? "📷 Añadir otra hoja" : "📷 Hacer foto", "secondary-btn cam-btn", () => pick(a, "inCam")),
+      actionBtn("🖼️ Galería", "secondary-btn", () => pick(a, "inGal")),
+      actionBtn("📄 Subir PDF", "secondary-btn", () => pick(a, "inPdf"))
+    );
+    box.appendChild(row);
+
+    if (a.photos.length) {
+      const grid = el("div", "grid");
+      a.photos.forEach((p, i) => {
+        const d = el("div", "thumb");
+        const img = document.createElement("img");
+        img.src = cur(p).data;
+        img.alt = "Hoja " + (i + 1);
+        const x = el("button", "remove-btn", "✕");
+        x.type = "button";
+        x.title = "Quitar esta foto";
+        x.disabled = isBusy();
+        x.onclick = () => { a.photos.splice(i, 1); clearMsg(); render(); };
+        d.append(img, x);
+        d.appendChild(el("span", "tag", p.use === "crop" ? "✂ Recortada" : (p.crop ? "Original" : "Sin recortar")));
+        if (p.crop) {   // permite alternar entre la foto recortada y la original
+          const m = el("button", "mode-btn", p.use === "crop" ? "Ver original" : "Usar recorte");
+          m.type = "button";
+          m.disabled = isBusy();
+          m.onclick = () => { p.use = p.use === "crop" ? "orig" : "crop"; render(); };
+          d.appendChild(m);
+        }
+        grid.appendChild(d);
+      });
+      box.appendChild(grid);
+      if (a.photos.length > 1) box.appendChild(el("p", "sheet-note", a.photos.length + " hojas en este albarán (saldrán en un solo PDF)."));
+    }
+
+    if (a.pdf) {
+      const pb = el("div", "pdf-box");
+      const info = document.createElement("div");
+      info.appendChild(el("div", "pdf-name", "📄 " + a.pdf.name));
+      info.appendChild(el("small", "", (a.pdf.size / 1048576).toFixed(1) + " MB"));
+      const x = el("button", "remove-btn", "✕");
+      x.type = "button";
+      x.title = "Quitar el PDF";
+      x.disabled = isBusy();
+      x.onclick = () => { a.pdf = null; clearMsg(); render(); };
+      pb.append(info, x);
+      box.appendChild(pb);
+    }
+
+    wrap.appendChild(box);
+  });
+
+  const n = albaranes.filter(a => !isEmpty(a)).length;
+  $("count").textContent = String(n);
+  $("send").textContent = n > 1 ? "Enviar " + n + " albaranes" : "Enviar albarán";
+  $("send").disabled = n === 0 || isBusy();
+  $("addAlb").disabled = isBusy();
+}
+
+function pick(a, inputId) {
+  target = a;
+  $(inputId).click();
+}
+
+function removeAlbaran(a) {
+  if (!isEmpty(a) && !confirm("¿Quitar este albarán y sus fotos?")) return;
+  albaranes = albaranes.filter(x => x !== a);
+  if (!albaranes.length) newAlbaran();
+  clearMsg();
+  render();
+}
+
+$("addAlb").onclick = () => {
+  clearMsg();
+  const last = albaranes[albaranes.length - 1];
+  if (isEmpty(last)) {
+    return showMsg("El Albarán " + albaranes.length + " todavía está vacío. Añade una foto o quítalo antes de crear otro.", "info-box");
+  }
+  newAlbaran();
+  render();
+  const boxes = document.querySelectorAll(".albaran-box");
+  boxes[boxes.length - 1].scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+/* ---------- Añadir fotos / PDF a un albarán ---------- */
+
+async function addImages(a, fileList) {
   clearMsg();
   const files = Array.from(fileList);
   if (!files.length) return;
   let replaced = false;
-  if (pdf) { pdf = null; replaced = true; }
+  if (a.pdf) { a.pdf = null; replaced = true; }
   let failed = 0;
-  const state = { cvFailed: false, notFound: 0 };
+  const state = { cvFailed: false, notFound: 0, err: "" };
   processing = true;
   render();
   try {
     for (let i = 0; i < files.length; i++) {
       const first = i === 0 && $("optCrop").checked && !(window.cv && window.cv.Mat);
       $("cropStatus").textContent = "Procesando foto " + (i + 1) + " de " + files.length + "…" + (first ? " (la primera vez tarda unos segundos más)" : "");
-      try { photos.push(await processFile(files[i], state)); } catch (e) { failed++; }
+      try { a.photos.push(await processFile(files[i], state)); } catch (e) { failed++; }
       render();
     }
   } finally {
     processing = false;
-    $("cropStatus").textContent = "";
+    if (state.cvFailed) cvState = "⚠️ Recorte no disponible: " + state.err;
+    else if (window.cv && window.cv.Mat) cvState = "✅ Recorte automático listo";
+    $("cropStatus").textContent = cvState;
     render();
   }
   if (failed) showMsg("No se pudo leer " + failed + " imagen(es). Prueba a hacer la foto de nuevo.", "error-box");
-  else if (state.cvFailed) showMsg("No se pudo cargar el recorte automático. Las fotos se envían tal cual.", "info-box");
+  else if (state.cvFailed) showMsg("El recorte automático no ha funcionado (" + state.err + "). Las fotos se envían tal cual.", "info-box");
   else if (state.notFound) showMsg("En " + state.notFound + " foto(s) no hacía falta recortar o no se ha encontrado el folio; se deja la imagen completa (puedes repetir la foto).", "info-box");
   else if (replaced) showMsg("Se ha quitado el PDF: un albarán se envía como fotos o como PDF, no ambos.", "info-box");
 }
 
-async function addPdf(file) {
+async function addPdf(a, file) {
   clearMsg();
   if (!file) return;
   if (file.size > MAX_PDF_MB * 1048576) {
@@ -938,9 +1095,9 @@ async function addPdf(file) {
   }
   try {
     const base64 = await readBase64(file);
-    const replaced = photos.length > 0;
-    photos = [];
-    pdf = { name: file.name, size: file.size, base64 };
+    const replaced = a.photos.length > 0;
+    a.photos = [];
+    a.pdf = { name: file.name, size: file.size, base64 };
     render();
     if (replaced) showMsg("Se han quitado las fotos: un albarán se envía como fotos o como PDF, no ambos.", "info-box");
   } catch (e) {
@@ -948,21 +1105,22 @@ async function addPdf(file) {
   }
 }
 
-$("btnCam").onclick = () => $("inCam").click();
-$("btnGal").onclick = () => $("inGal").click();
-$("btnPdf").onclick = () => $("inPdf").click();
+function currentTarget() {
+  if (!albaranes.includes(target)) target = albaranes[albaranes.length - 1];
+  return target;
+}
 
-$("inCam").addEventListener("change", async e => { await addImages(e.target.files); e.target.value = ""; });
-$("inGal").addEventListener("change", async e => { await addImages(e.target.files); e.target.value = ""; });
-$("inPdf").addEventListener("change", async e => { await addPdf(e.target.files[0]); e.target.value = ""; });
+$("inCam").addEventListener("change", async e => { const f = e.target.files; await addImages(currentTarget(), f); e.target.value = ""; });
+$("inGal").addEventListener("change", async e => { const f = e.target.files; await addImages(currentTarget(), f); e.target.value = ""; });
+$("inPdf").addEventListener("change", async e => { const f = e.target.files[0]; await addPdf(currentTarget(), f); e.target.value = ""; });
 
 /* ---------- Fotos → PDF (en el propio móvil) ---------- */
 
-function buildPdf() {
+function buildPdf(photoList) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const PW = 210, PH = 297, M = 5;
-  photos.forEach((ph, i) => {
+  photoList.forEach((ph, i) => {
     const p = cur(ph);
     if (i) doc.addPage();
     const r = Math.min((PW - 2 * M) / p.w, (PH - 2 * M) / p.h);
@@ -972,49 +1130,71 @@ function buildPdf() {
   return doc.output("datauristring").split(",")[1];   // base64 sin cabecera
 }
 
-/* ---------- Enviar ---------- */
-
-function setBusy(busy) {
-  $("spinner").hidden = !busy;
-  $("send").disabled = busy;
-  ["btnCam", "btnGal", "btnPdf"].forEach(id => $(id).disabled = busy);
-}
+/* ---------- Enviar: un PDF por albarán ---------- */
 
 $("send").onclick = async () => {
   clearMsg();
   if (FLOW_URL.startsWith("PEGA_")) return showMsg("Falta configurar FLOW_URL en el HTML.", "error-box");
-  if (!pdf && !photos.length) return;
 
-  setBusy(true);
+  const vacio = albaranes.findIndex(isEmpty);
+  if (vacio !== -1 && albaranes.some(a => !isEmpty(a))) {
+    return showMsg("El Albarán " + (vacio + 1) + " está vacío. Añade una foto o quítalo.", "error-box");
+  }
+  const list = albaranes.filter(a => !isEmpty(a));
+  if (!list.length) return;
+
+  sending = true;
+  $("spinner").hidden = false;
+  render();
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  let sent = 0;
   try {
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const body = {
-      nombreTemporal: "albaran_" + stamp + ".pdf",
-      origen: pdf ? "pdf" : "fotos",
-      fotos: pdf ? null : photos.length,
-      pdfBase64: pdf ? pdf.base64 : buildPdf()
-    };
-    // text/plain + no-cors evita el bloqueo CORS de los disparadores HTTP de Power Automate
-    await fetch(FLOW_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(body)
-    });
-    photos = []; pdf = null; render();
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      $("spinnerText").textContent = list.length > 1 ? "Enviando albarán " + (i + 1) + " de " + list.length + "…" : "Enviando albarán…";
+      await new Promise(r => setTimeout(r, 30));   // deja que se pinte el mensaje antes del trabajo pesado
+      const body = {
+        nombreTemporal: "albaran_" + stamp + "_" + (i + 1) + ".pdf",
+        origen: a.pdf ? "pdf" : "fotos",
+        fotos: a.pdf ? null : a.photos.length,
+        albaran: i + 1,
+        totalAlbaranes: list.length,
+        pdfBase64: a.pdf ? a.pdf.base64 : buildPdf(a.photos)
+      };
+      // text/plain + no-cors evita el bloqueo CORS de los disparadores HTTP de Power Automate
+      await fetch(FLOW_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(body)
+      });
+      sent++;
+      albaranes = albaranes.filter(x => x !== a);   // los enviados desaparecen de la lista
+      if (!albaranes.length) newAlbaran();
+      render();
+    }
+    $("doneTitle").textContent = sent > 1 ? "✅ " + sent + " albaranes enviados" : "✅ Albarán enviado";
     $("formView").hidden = true;
     $("doneView").hidden = false;
   } catch (err) {
-    showMsg("No se pudo enviar. Comprueba la conexión e inténtalo de nuevo.", "error-box");
+    showMsg(sent
+      ? "Se han enviado " + sent + " de " + list.length + " albaranes. Ha fallado el siguiente: comprueba la conexión y pulsa Enviar otra vez; solo se mandarán los que faltan."
+      : "No se pudo enviar. Comprueba la conexión e inténtalo de nuevo.", "error-box");
   }
-  setBusy(false);
+  sending = false;
+  $("spinner").hidden = true;
   render();
 };
 
 $("again").onclick = () => {
+  albaranes = [];
+  newAlbaran();
+  target = albaranes[0];
   $("doneView").hidden = true;
   $("formView").hidden = false;
   clearMsg();
+  render();
 };
 
 render();
