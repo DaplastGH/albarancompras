@@ -248,7 +248,56 @@ input:focus {
 .thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background-color: #eeeeee;
+}
+
+.thumb .mode-btn {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+
+  padding: 4px 2px;
+
+  border: none;
+  border-radius: 4px;
+
+  background: rgba(4, 74, 128, 0.88);
+
+  color: #ffffff;
+
+  font-size: 11px;
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.opt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 16px;
+}
+
+.opt-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.opt-row label {
+  margin: 0;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.crop-status {
+  min-height: 18px;
+  margin: 8px 0 0;
+  color: #666666;
 }
 
 .thumb .remove-btn {
@@ -492,6 +541,12 @@ input:focus {
         <button type="button" class="secondary-btn" id="btnPdf">📄 Subir PDF</button>
       </div>
 
+      <div class="opt-row">
+        <input type="checkbox" id="optCrop" checked>
+        <label for="optCrop">Recortar y enderezar el folio automáticamente</label>
+      </div>
+      <p class="crop-status" id="cropStatus"></p>
+
       <input id="inCam" type="file" accept="image/*" capture="environment" hidden>
       <input id="inGal" type="file" accept="image/*" multiple hidden>
       <input id="inPdf" type="file" accept="application/pdf,.pdf" hidden>
@@ -526,17 +581,21 @@ input:focus {
 
 <script>
 /* ===== CONFIGURACIÓN ===== */
-const FLOW_URL   = "https://default9057cb6da67347c7b025e86c6b54bd.2d.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/19/workflows/8f395d62d0224353b9f5c37544e9fd7e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=t2KhzetK1nk-sfHKZfqo28968BrrbRGtZEFs-KM05Oo";  // URL del disparador HTTP de Power Automate
+const FLOW_URL   = "PEGA_AQUI_LA_URL_DEL_FLUJO";  // URL del disparador HTTP de Power Automate
 const LOGO_URL   = "https://daplast.com/wp-content/uploads/2024/10/Marca-Daplast-principal-3.png";  // dejar "" para no mostrar logo
 const MAX_PX     = 1800;                          // lado mayor de cada foto
 const QUALITY    = 0.75;                          // calidad JPEG
 const MAX_PDF_MB = 15;                            // tamaño máximo de un PDF subido
+const OPENCV_URL = "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js";  // para el recorte automático
 /* ========================= */
 
 const $ = id => document.getElementById(id);
 
-let photos = [];   // { data, w, h }
+let photos = [];   // { use: "crop" | "orig", orig: {data,w,h}, crop: {data,w,h} | null }
 let pdf = null;    // { name, size, base64 }
+let processing = false;
+
+const cur = p => (p.use === "crop" && p.crop) ? p.crop : p.orig;
 
 if (LOGO_URL) {
   $("logo").onerror = () => { $("logoWrap").hidden = true; };   // si el logo no carga, no se muestra
@@ -588,8 +647,201 @@ async function compress(file) {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(bmp, 0, 0, w, h);
-  return { data: c.toDataURL("image/jpeg", QUALITY), w, h };
+  return { data: c.toDataURL("image/jpeg", QUALITY), w, h, canvas: c };
 }
+
+/* ---------- Recorte automático (OpenCV.js) ---------- */
+
+let cvPromise = null;
+
+function loadCv() {
+  if (cvPromise) return cvPromise;
+  cvPromise = new Promise((resolve, reject) => {
+    let done = false, timer, limit;
+    const finish = (err) => {
+      if (done) return;
+      done = true; clearInterval(timer); clearTimeout(limit);
+      err ? reject(err) : resolve(true);
+    };
+    const s = document.createElement("script");
+    s.src = OPENCV_URL;
+    s.async = true;
+    s.onerror = () => finish(new Error("No se pudo cargar OpenCV"));
+    s.onload = () => {
+      try {
+        const c = window.cv;
+        if (c && typeof c.then === "function") c.then(m => { if (m && m.Mat) window.cv = m; finish(); });
+        else if (c) c.onRuntimeInitialized = () => finish();
+      } catch (e) {}
+    };
+    timer = setInterval(() => { if (window.cv && window.cv.Mat) finish(); }, 200);
+    limit = setTimeout(() => finish(new Error("OpenCV tarda demasiado")), 60000);
+    document.head.appendChild(s);
+  });
+  cvPromise.catch(() => { cvPromise = null; });   // permite reintentar en la siguiente foto
+  return cvPromise;
+}
+
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+function orderCorners(pts) {   // -> [arriba-izq, arriba-der, abajo-der, abajo-izq]
+  const sum  = pts.map(p => p[0] + p[1]);
+  const diff = pts.map(p => p[0] - p[1]);
+  return [
+    pts[sum.indexOf(Math.min(...sum))],
+    pts[diff.indexOf(Math.max(...diff))],
+    pts[sum.indexOf(Math.max(...sum))],
+    pts[diff.indexOf(Math.min(...diff))]
+  ];
+}
+
+function quadLooksLikePaper(q, imgArea) {
+  const area = Math.abs(
+    (q[0][0] * q[1][1] - q[1][0] * q[0][1]) + (q[1][0] * q[2][1] - q[2][0] * q[1][1]) +
+    (q[2][0] * q[3][1] - q[3][0] * q[2][1]) + (q[3][0] * q[0][1] - q[0][0] * q[3][1])) / 2;
+  if (area < imgArea * 0.1) return 0;                         // demasiado pequeño
+  if (area > imgArea * 0.97) return 0;                        // ya ocupa toda la foto: no hay nada que recortar
+  const wMax = Math.max(dist(q[0], q[1]), dist(q[3], q[2]));
+  const hMax = Math.max(dist(q[0], q[3]), dist(q[1], q[2]));
+  const wMin = Math.min(dist(q[0], q[1]), dist(q[3], q[2]));
+  const hMin = Math.min(dist(q[0], q[3]), dist(q[1], q[2]));
+  if (wMin < wMax * 0.6 || hMin < hMax * 0.6) return 0;       // trapecio demasiado deformado
+  const ratio = Math.max(wMax, hMax) / Math.min(wMax, hMax);
+  if (ratio > 2.2) return 0;                                  // no parece un folio
+  return area;
+}
+
+// Busca el folio en una copia reducida y devuelve sus 4 esquinas en coordenadas del canvas original, o null
+function findDocument(canvas) {
+  const cv = window.cv;
+  const scale = Math.min(1, 700 / Math.max(canvas.width, canvas.height));
+  const sw = Math.round(canvas.width * scale), sh = Math.round(canvas.height * scale);
+  const small = document.createElement("canvas");
+  small.width = sw; small.height = sh;
+  small.getContext("2d").drawImage(canvas, 0, 0, sw, sh);
+
+  const mats = [];
+  const keep = m => (mats.push(m), m);
+  try {
+    const src = keep(cv.imread(small));
+    const gray = keep(new cv.Mat());
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    const blur = keep(new cv.Mat());
+    cv.GaussianBlur(gray, blur, new cv.Size(7, 7), 0);
+    const kernel = keep(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5)));
+
+    // Dos máscaras: bordes (Canny) y zona clara frente al fondo (Otsu)
+    const edges = keep(new cv.Mat());
+    cv.Canny(blur, edges, 50, 150);
+    cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernel, new cv.Point(-1, -1), 2);
+    const bright = keep(new cv.Mat());
+    cv.threshold(blur, bright, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+    cv.morphologyEx(bright, bright, cv.MORPH_CLOSE, kernel, new cv.Point(-1, -1), 2);
+
+    const imgArea = sw * sh;
+    let best = null, bestArea = 0;
+
+    for (const mask of [edges, bright]) {
+      const contours = keep(new cv.MatVector());
+      const hier = keep(new cv.Mat());
+      cv.findContours(mask, contours, hier, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+      const list = [];
+      for (let i = 0; i < contours.size(); i++) {
+        const c = contours.get(i);
+        list.push({ c, a: cv.contourArea(c) });
+      }
+      list.sort((x, y) => y.a - x.a);
+
+      for (const { c, a } of list.slice(0, 5)) {
+        if (a < imgArea * 0.1) break;
+        const hull = new cv.Mat();
+        cv.convexHull(c, hull, false, true);
+        const peri = cv.arcLength(hull, true);
+        for (const eps of [0.02, 0.03, 0.04, 0.05, 0.06]) {
+          const ap = new cv.Mat();
+          cv.approxPolyDP(hull, ap, eps * peri, true);
+          if (ap.rows === 4) {
+            const pts = [];
+            for (let k = 0; k < 4; k++) pts.push([ap.data32S[k * 2], ap.data32S[k * 2 + 1]]);
+            const q = orderCorners(pts);
+            const area = quadLooksLikePaper(q, imgArea);
+            if (area > bestArea) { bestArea = area; best = q; }
+            ap.delete();
+            break;
+          }
+          ap.delete();
+        }
+        hull.delete();
+      }
+      list.forEach(x => x.c.delete());
+    }
+
+    if (!best) return null;
+    return best.map(p => [p[0] / scale, p[1] / scale]);
+  } finally {
+    mats.forEach(m => { try { m.delete(); } catch (e) {} });
+  }
+}
+
+// Endereza el folio (corrige la perspectiva) y lo devuelve en un canvas nuevo
+function warpDocument(canvas, q) {
+  const cv = window.cv;
+  let w = Math.round(Math.max(dist(q[0], q[1]), dist(q[3], q[2])));
+  let h = Math.round(Math.max(dist(q[0], q[3]), dist(q[1], q[2])));
+  const r = Math.min(1, MAX_PX / Math.max(w, h));
+  w = Math.max(2, Math.round(w * r)); h = Math.max(2, Math.round(h * r));
+
+  const src = cv.imread(canvas), dst = new cv.Mat();
+  const from = cv.matFromArray(4, 1, cv.CV_32FC2, [].concat(...q));
+  const to = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, w - 1, 0, w - 1, h - 1, 0, h - 1]);
+  const M = cv.getPerspectiveTransform(from, to);
+  try {
+    cv.warpPerspective(src, dst, M, new cv.Size(w, h), cv.INTER_LINEAR, cv.BORDER_REPLICATE);
+    const out = document.createElement("canvas");
+    out.width = w; out.height = h;
+    cv.imshow(out, dst);
+    return out;
+  } finally {
+    [src, dst, from, to, M].forEach(m => { try { m.delete(); } catch (e) {} });
+  }
+}
+
+// Foto -> { orig, crop, use }. Si el recorte no es posible, se queda con la foto original.
+async function processFile(file, state) {
+  const o = await compress(file);
+  const item = { use: "orig", orig: { data: o.data, w: o.w, h: o.h }, crop: null };
+  if (!$("optCrop").checked || state.cvFailed) return item;
+  try {
+    await loadCv();
+    const q = findDocument(o.canvas);
+    if (q) {
+      const c = warpDocument(o.canvas, q);
+      item.crop = { data: c.toDataURL("image/jpeg", QUALITY), w: c.width, h: c.height };
+      item.use = "crop";
+    } else {
+      state.notFound++;
+    }
+  } catch (e) {
+    state.cvFailed = true;
+  }
+  return item;
+}
+
+try { $("optCrop").checked = localStorage.getItem("optCrop") !== "0"; } catch (e) {}
+$("optCrop").addEventListener("change", () => {
+  try { localStorage.setItem("optCrop", $("optCrop").checked ? "1" : "0"); } catch (e) {}
+  if ($("optCrop").checked) preloadCv();
+});
+
+function preloadCv() {
+  if (!$("optCrop").checked) return;
+  $("cropStatus").textContent = "Preparando el recorte automático… (solo la primera vez)";
+  loadCv()
+    .then(() => { if (!processing) $("cropStatus").textContent = ""; })
+    .catch(() => { $("cropStatus").textContent = ""; });
+}
+window.addEventListener("load", () => setTimeout(preloadCv, 300));
 
 /* ---------- Pintar lista ---------- */
 
@@ -600,7 +852,7 @@ function render() {
     const d = document.createElement("div");
     d.className = "thumb";
     const img = document.createElement("img");
-    img.src = p.data;
+    img.src = cur(p).data;
     img.alt = "Foto " + (i + 1);
     const b = document.createElement("button");
     b.type = "button";
@@ -609,6 +861,14 @@ function render() {
     b.textContent = "✕";
     b.onclick = () => { photos.splice(i, 1); clearMsg(); render(); };
     d.append(img, b);
+    if (p.crop) {   // permite alternar entre la foto recortada y la original
+      const m = document.createElement("button");
+      m.type = "button";
+      m.className = "mode-btn";
+      m.textContent = p.use === "crop" ? "Ver original" : "Usar recorte";
+      m.onclick = () => { p.use = p.use === "crop" ? "orig" : "crop"; render(); };
+      d.appendChild(m);
+    }
     grid.appendChild(d);
   });
 
@@ -636,7 +896,8 @@ function render() {
 
   const n = pdf ? 1 : photos.length;
   $("count").textContent = pdf ? "1 PDF" : (n === 1 ? "1 foto" : n + " fotos");
-  $("send").disabled = n === 0;
+  $("send").disabled = n === 0 || processing;
+  ["btnCam", "btnGal", "btnPdf"].forEach(id => $(id).disabled = processing);
 }
 
 /* ---------- Añadir fotos / PDF ---------- */
@@ -648,11 +909,24 @@ async function addImages(fileList) {
   let replaced = false;
   if (pdf) { pdf = null; replaced = true; }
   let failed = 0;
-  for (const f of files) {
-    try { photos.push(await compress(f)); } catch (e) { failed++; }
-  }
+  const state = { cvFailed: false, notFound: 0 };
+  processing = true;
   render();
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const first = i === 0 && $("optCrop").checked && !(window.cv && window.cv.Mat);
+      $("cropStatus").textContent = "Procesando foto " + (i + 1) + " de " + files.length + "…" + (first ? " (la primera vez tarda unos segundos más)" : "");
+      try { photos.push(await processFile(files[i], state)); } catch (e) { failed++; }
+      render();
+    }
+  } finally {
+    processing = false;
+    $("cropStatus").textContent = "";
+    render();
+  }
   if (failed) showMsg("No se pudo leer " + failed + " imagen(es). Prueba a hacer la foto de nuevo.", "error-box");
+  else if (state.cvFailed) showMsg("No se pudo cargar el recorte automático. Las fotos se envían tal cual.", "info-box");
+  else if (state.notFound) showMsg("En " + state.notFound + " foto(s) no hacía falta recortar o no se ha encontrado el folio; se deja la imagen completa (puedes repetir la foto).", "info-box");
   else if (replaced) showMsg("Se ha quitado el PDF: un albarán se envía como fotos o como PDF, no ambos.", "info-box");
 }
 
@@ -688,7 +962,8 @@ function buildPdf() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const PW = 210, PH = 297, M = 5;
-  photos.forEach((p, i) => {
+  photos.forEach((ph, i) => {
+    const p = cur(ph);
     if (i) doc.addPage();
     const r = Math.min((PW - 2 * M) / p.w, (PH - 2 * M) / p.h);
     const w = p.w * r, h = p.h * r;
