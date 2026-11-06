@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Facturas</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <style>
 *,
 *::before,
@@ -598,6 +599,110 @@ input:focus {
 }
 
 /* ========================= */
+/* ALBARANES CANDIDATOS */
+/* ========================= */
+
+.cand-list {
+  text-align: left;
+  margin-top: 10px;
+}
+
+.cand-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  border-bottom: 1px solid #d8e6dd;
+}
+
+.cand-main {
+  flex: 1 1 auto;
+
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  margin: 0;
+  padding: 12px 10px;
+
+  font-weight: normal;
+
+  cursor: pointer;
+}
+
+.cand-main input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.pdf-btn {
+  flex: 0 0 auto;
+
+  border: 2px solid #044a80;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  font-size: 18px;
+
+  padding: 8px 12px;
+
+  cursor: pointer;
+}
+
+a.pdf-btn {
+  text-decoration: none;
+  line-height: 1;
+}
+
+.pv-frame {
+  width: 100%;
+  height: calc(100vh - 250px);
+
+  border: 0;
+  border-radius: 6px;
+
+  background: #ffffff;
+}
+
+.pv-link {
+  display: block;
+
+  margin-top: 10px;
+  padding: 12px 20px;
+
+  text-align: center;
+  text-decoration: none;
+
+  box-sizing: border-box;
+}
+
+.cand-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: #333333;
+  word-break: break-word;
+}
+
+.cand-txt small {
+  color: #666666;
+}
+
+.cand-count {
+  margin: 14px 0 0;
+  font-weight: bold;
+  color: #044a80;
+}
+
+.resultado-box .error-box {
+  text-align: left;
+}
+
+/* ========================= */
 /* RESULTADO */
 /* ========================= */
 
@@ -882,9 +987,6 @@ input:focus {
 
       <button type="button" class="secondary-btn add-btn" id="addAlb" hidden>➕ Añadir otro albarán</button>
 
-      <input id="inCam" type="file" accept="image/*" capture="environment" hidden>
-      <input id="inGal" type="file" accept="image/*" multiple hidden>
-      <input id="inPdf" type="file" accept="application/pdf,.pdf" hidden>
 
       <div class="summary-box" hidden>
         <strong>Albaranes a enviar</strong>
@@ -905,9 +1007,36 @@ input:focus {
     <div class="resultado-box" id="doneView" hidden>
       <h2 id="doneTitle">Factura leída</h2>
       <ul class="done-list" id="doneList"></ul>
+      <div id="cruceBox"></div>
+
+      <div class="section-title" id="extrasTitle" hidden>Albaranes que no están en el registro</div>
+      <div id="extras"></div>
+
+      <button type="button" class="secondary-btn add-btn" id="addExtra">➕ Añadir un albarán que no está en el registro</button>
+
+      <div id="msgDone"></div>
+
+      <button type="button" class="primary-btn" id="generar">Generar PDF con factura y albaranes</button>
       <button type="button" class="secondary-btn" id="again">Leer otra factura</button>
     </div>
 
+  </div>
+</div>
+
+<input id="inCam" type="file" accept="image/*" capture="environment" hidden>
+<input id="inGal" type="file" accept="image/*" multiple hidden>
+<input id="inPdf" type="file" accept="application/pdf,.pdf" hidden>
+
+<!-- ===== VISOR DE PDF ===== -->
+<div class="overlay" id="pdfView" hidden>
+  <div class="ov-box">
+    <p class="ov-title" id="pvTitle"></p>
+    <iframe class="pv-frame" id="pvFrame" title="PDF"></iframe>
+    <div class="ov-actions">
+      <button type="button" class="primary-btn" id="pvDownload" hidden>⬇️ Descargar PDF</button>
+      <a class="secondary-btn pv-link" id="pvOpen" target="_blank" rel="noopener">Abrir en otra pestaña</a>
+      <button type="button" class="secondary-btn" id="pvClose">Cerrar</button>
+    </div>
   </div>
 </div>
 
@@ -948,7 +1077,7 @@ input:focus {
 
 <script>
 /* ===== CONFIGURACIÓN ===== */
-const FLOW_URL   = "https://default9057cb6da67347c7b025e86c6b54bd.2d.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/26/workflows/0c06682bdfac46e78ddeeb59a082a451/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=vmVuws9cnnTBkCKiDCmqitGfP2_OsUbrwWArL9m2X68";  // URL del disparador HTTP del flujo de facturas
+const FLOW_URL   = "https://default9057cb6da67347c7b025e86c6b54bd.2d.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/26/workflows/0c06682bdfac46e78ddeeb59a082a451/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=vmVuws9cnnTBkCKiDCmqitGfP2_OsUbrwWArL9m2X68";  // URL del disparador HTTP del flujo de facturas// URL del disparador HTTP del flujo de facturas
 const LOGO_URL   = "https://daplast.com/wp-content/uploads/2024/10/Marca-Daplast-principal-3.png";  // dejar "" para no mostrar logo
 const MAX_PX     = 1800;                          // lado mayor de cada foto
 const QUALITY    = 0.75;                          // calidad JPEG
@@ -969,13 +1098,15 @@ if (LOGO_URL) {
   $("logoWrap").hidden = false;
 }
 
+const msgBox = () => $("doneView").hidden ? $("msg") : $("msgDone");
+
 function showMsg(text, cls) {
   const d = document.createElement("div");
   d.className = cls;
   d.textContent = text;
-  $("msg").replaceChildren(d);
+  msgBox().replaceChildren(d);
 }
-function clearMsg() { $("msg").replaceChildren(); }
+function clearMsg() { $("msg").replaceChildren(); $("msgDone").replaceChildren(); }
 
 /* ---------- Lectura de archivos ---------- */
 
@@ -1386,7 +1517,8 @@ newAlbaran();
 target = albaranes[0];
 
 const isEmpty = a => !a.pdf && a.photos.length === 0;
-const isBusy  = () => processing || sending;
+let generating = false;
+const isBusy  = () => processing || sending || generating;
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -1404,17 +1536,16 @@ function actionBtn(text, cls, onclick) {
 }
 
 function render() {
-  const wrap = $("albaranes");
+  const wrap = $("albaranes"), wrapX = $("extras");
   wrap.replaceChildren();
+  wrapX.replaceChildren();
 
   albaranes.forEach((a, idx) => {
     const box = el("div", "albaran-box");
 
     const head = el("div", "albaran-header");
-    head.appendChild(el("div", "albaran-title", "Factura"));
-    if (albaranes.length > 1) {
-      head.appendChild(actionBtn("🗑 Quitar este albarán", "remove-link", () => removeAlbaran(a)));
-    }
+    head.appendChild(el("div", "albaran-title", idx === 0 ? "Factura" : "Albarán " + idx));
+    if (idx > 0) head.appendChild(actionBtn("🗑 Quitar este albarán", "remove-link", () => removeAlbaran(a)));
     box.appendChild(head);
 
     const row = el("div", "btn-row");
@@ -1443,7 +1574,7 @@ function render() {
         grid.appendChild(d);
       });
       box.appendChild(grid);
-      box.appendChild(el("p", "sheet-note", (a.photos.length > 1 ? a.photos.length + " hojas en esta factura (saldrán en un solo PDF). " : "") + "Toca una foto para verla o ajustar el recorte."));
+      box.appendChild(el("p", "sheet-note", (a.photos.length > 1 ? a.photos.length + " hojas (saldrán en un solo PDF). " : "") + "Toca una foto para verla o ajustar el recorte."));
     }
 
     if (a.pdf) {
@@ -1460,16 +1591,14 @@ function render() {
       box.appendChild(pb);
     }
 
-    if (a.falta && a.falta.length) box.appendChild(faltaBox(a));
-
-    wrap.appendChild(box);
+    (idx === 0 ? wrap : wrapX).appendChild(box);
   });
 
-  const n = albaranes.filter(a => !isEmpty(a)).length;
-  $("count").textContent = String(n);
+  $("extrasTitle").hidden = albaranes.length < 2;
   $("send").textContent = "Leer factura";
-  $("send").disabled = n === 0 || isBusy();
-  $("addAlb").disabled = isBusy();
+  $("send").disabled = isEmpty(albaranes[0]) || isBusy();
+  $("addExtra").disabled = isBusy();
+  $("generar").disabled = isBusy();
 }
 
 const FALTA_TXT = { proveedor: "el proveedor", numero: "el número de albarán" };
@@ -1601,6 +1730,224 @@ function buildPdf(photoList) {
 /* ---------- Enviar la factura al flujo (paso 1: solo leer) ---------- */
 
 let facturaPdf = null;   // PDF de la factura, se usará para juntarlo con los albaranes
+let candidatos = [];    // albaranes del proveedor: { id, numero, fecha, estado, otras, sel }
+
+const fechaES = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : ""; };
+
+function actualizarSel() {
+  const n = candidatos.filter(c => c.sel).length;
+  const p = document.getElementById("candCount");
+  if (p) p.textContent = n === 1 ? "1 albarán seleccionado" : n + " albaranes seleccionados";
+}
+
+let facturaInfo = {};
+let cruceOrden = new Map();
+
+function renderLista() {
+  const lb = $("listaBox");
+  lb.replaceChildren();
+  if (!candidatos.length) {
+    lb.appendChild(el("p", "hint", "No hay albaranes pendientes de este proveedor en el registro."));
+    return;
+  }
+  const list = el("div", "cand-list");
+  candidatos.forEach(c => {
+    const row = el("div", "cand-row");
+    const lab = el("label", "cand-main");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = c.sel;
+    cb.onchange = () => { c.sel = cb.checked; actualizarSel(); };
+    const txt = el("span", "cand-txt");
+    txt.appendChild(el("strong", "", "Albarán " + (c.numero || "(sin número)")));
+    txt.appendChild(el("small", "", [fechaES(c.fecha), c.estado, c.otras].filter(Boolean).join(" · ")));
+    lab.append(cb, txt);
+    row.appendChild(lab);
+    if (/^https:\/\//i.test(c.url)) {
+      const pb = el("a", "pdf-btn", "📄");
+      pb.href = c.url;
+      pb.target = "_blank";
+      pb.rel = "noopener";
+      pb.title = "Ver este albarán";
+      row.appendChild(pb);
+    }
+    list.appendChild(row);
+  });
+  lb.appendChild(list);
+  const cnt = el("p", "cand-count", "");
+  cnt.id = "candCount";
+  lb.appendChild(cnt);
+  actualizarSel();
+}
+
+function mostrarCruce(res) {
+  const box = $("cruceBox");
+  box.replaceChildren();
+  facturaInfo = res.factura || {};
+  const cruce = res.cruce || {};
+  cruceOrden = new Map((cruce.ids || []).map((id, i) => [String(id), i]));
+  candidatos = (res.candidatos || []).map(t => {
+    const p = String(t).split(" | ");
+    return { id: p[0], numero: p[1] || "", fecha: p[2] || "", estado: p[3] || "", url: p[4] || "", otras: p.slice(5).join(" | "), pdf: null };
+  }).filter(c => c.estado !== "Facturado");
+  candidatos.forEach(c => { c.sel = cruceOrden.has(c.id); });
+  candidatos.sort((a, b) => (b.sel - a.sel) || String(b.fecha).localeCompare(String(a.fecha)));
+
+  box.appendChild(el("div", "section-title", "Albaranes de este proveedor"));
+  const sin = (cruce.entregas_sin_encontrar || []).filter(Boolean);
+  if (sin.length) {
+    box.appendChild(el("div", "error-box", "No he encontrado en el registro: " + sin.join(" ; ") + ". Si existen, márcalos a mano en la lista o añádelos abajo como albarán no digitalizado."));
+  }
+  const lb = el("div", "");
+  lb.id = "listaBox";
+  box.appendChild(lb);
+  renderLista();
+}
+
+/* ---------- Llamadas al flujo (pedir el PDF de un albarán, marcar facturado) ---------- */
+
+async function llamarFlujo(datos) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 115000);
+  try {
+    const r = await fetch(FLOW_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(Object.assign({ codigo: $("codigo").value.trim() }, datos)),
+      signal: ctrl.signal
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function pedirPdf(id) {
+  const res = await llamarFlujo({ accion: "pdf", id: Number(id) });
+  if (res && res.error === "codigo") throw new Error("el código de acceso no es correcto");
+  if (!res || res.ok !== true || !res.pdfBase64) throw new Error("el flujo no devolvió el PDF");
+  return res.pdfBase64;
+}
+
+const bytesDe = b64 => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+
+/* ---------- Visor de PDF ---------- */
+
+let pvUrl = null;
+let pvAccion = null;
+
+function abrirPdf(bytes, titulo, descargar) {
+  if (pvUrl) URL.revokeObjectURL(pvUrl);
+  pvUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  $("pvTitle").textContent = titulo;
+  $("pvFrame").src = pvUrl;
+  $("pvOpen").href = pvUrl;
+  $("pvDownload").hidden = !descargar;
+  pvAccion = descargar || null;
+  $("pdfView").hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+$("pvClose").onclick = () => {
+  $("pdfView").hidden = true;
+  $("pvFrame").src = "about:blank";
+  document.body.style.overflow = "";
+};
+
+/* ---------- Albaranes que no están en el registro ---------- */
+
+$("addExtra").onclick = () => {
+  clearMsg();
+  const last = albaranes[albaranes.length - 1];
+  if (albaranes.length > 1 && isEmpty(last)) {
+    return showMsg("El último albarán todavía está vacío. Añade una foto o un PDF, o quítalo.", "info-box");
+  }
+  const a = newAlbaran();
+  target = a;
+  render();
+  const boxes = $("extras").querySelectorAll(".albaran-box");
+  if (boxes.length) boxes[boxes.length - 1].scrollIntoView({ behavior: "smooth", block: "center" });
+};
+
+/* ---------- Generar el PDF final ---------- */
+
+const limpiaNombre = t => String(t || "").replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, " ").trim();
+
+$("generar").onclick = async () => {
+  clearMsg();
+  if (!window.PDFLib) return showMsg("No se ha cargado la librería para unir PDFs (pdf-lib). Comprueba la conexión y recarga la página.", "error-box");
+  const sel = candidatos.filter(c => c.sel).sort((a, b) => {
+    const oa = cruceOrden.has(a.id) ? cruceOrden.get(a.id) : 1e6, ob = cruceOrden.has(b.id) ? cruceOrden.get(b.id) : 1e6;
+    return (oa - ob) || String(a.fecha).localeCompare(String(b.fecha));
+  });
+  const extras = albaranes.slice(1).filter(a => !isEmpty(a));
+  if (!sel.length && !extras.length) return showMsg("Marca al menos un albarán, o añade uno que no esté en el registro.", "error-box");
+
+  generating = true;
+  render();
+  try {
+    const { PDFDocument } = window.PDFLib;
+    const out = await PDFDocument.create();
+    const unir = async b64 => {
+      const src = await PDFDocument.load(bytesDe(b64), { ignoreEncryption: true });
+      (await out.copyPages(src, src.getPageIndices())).forEach(p => out.addPage(p));
+    };
+    const total = sel.length + extras.length;
+    let n = 0;
+    showMsg("Preparando el PDF…", "info-box");
+    await unir(facturaPdf);
+    for (const c of sel) {
+      n++;
+      showMsg("Preparando albarán " + n + " de " + total + "…", "info-box");
+      if (!c.pdf) c.pdf = await pedirPdf(c.id);
+      await unir(c.pdf);
+    }
+    for (const a of extras) {
+      n++;
+      showMsg("Preparando albarán " + n + " de " + total + "…", "info-box");
+      await unir(a.pdf ? a.pdf.base64 : buildPdf(a.photos));
+    }
+    const bytes = await out.save();
+    clearMsg();
+    const nombre = "Factura " + limpiaNombre(facturaInfo.numero_factura || "sin número") + " - " + limpiaNombre(facturaInfo.proveedor_coincidencia || facturaInfo.proveedor || "proveedor") + ".pdf";
+    abrirPdf(bytes, "Factura + " + total + (total === 1 ? " albarán" : " albaranes"), { nombre, ids: sel.map(c => c.id), marcado: false });
+  } catch (e) {
+    showMsg("No se ha podido generar el PDF: " + ((e && e.message) || e), "error-box");
+  } finally {
+    generating = false;
+    render();
+  }
+};
+
+$("pvDownload").onclick = async () => {
+  const acc = pvAccion;
+  if (!acc) return;
+  const a = document.createElement("a");
+  a.href = pvUrl;
+  a.download = acc.nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  if (acc.marcado || !acc.ids.length) return;
+  if (!confirm("PDF descargado.\n\n¿Marcar los " + acc.ids.length + " albaranes del registro como FACTURADOS con la factura " + (facturaInfo.numero_factura || "") + "?")) return;
+  try {
+    const res = await llamarFlujo({ accion: "marcar", ids: acc.ids.map(Number), factura: String(facturaInfo.numero_factura || "") });
+    if (!res || res.ok !== true) throw new Error("el flujo no lo confirmó");
+    acc.marcado = true;
+    candidatos = candidatos.filter(c => !acc.ids.includes(c.id));
+    renderLista();
+    $("pdfView").hidden = true;
+    $("pvFrame").src = "about:blank";
+    document.body.style.overflow = "";
+    showMsg("✅ " + acc.ids.length + " albaranes marcados como facturados.", "info-box");
+  } catch (e) {
+    showMsg("El PDF se ha descargado, pero no se han podido marcar los albaranes (" + ((e && e.message) || e) + "). Puedes volver a pulsar Descargar para reintentarlo.", "error-box");
+    $("pdfView").hidden = true;
+    document.body.style.overflow = "";
+  }
+};
 
 $("send").onclick = async () => {
   clearMsg();
@@ -1652,6 +1999,7 @@ $("send").onclick = async () => {
         ["Pedidos citados", lista(f.referencias_pedido) || "ninguno"]
       ].forEach(([k, v]) => ul.appendChild(el("li", "", k + ": " + (v || "—"))));
       if (f.legible === false) ul.appendChild(el("li", "", "⚠️ La factura no se lee con claridad."));
+      mostrarCruce(res);
       $("formView").hidden = true;
       $("doneView").hidden = false;
     }
@@ -1664,6 +2012,9 @@ $("send").onclick = async () => {
 };
 
 $("again").onclick = () => {
+  $("cruceBox").replaceChildren();
+  candidatos = [];
+  facturaPdf = null;
   albaranes = [];
   newAlbaran();
   target = albaranes[0];
