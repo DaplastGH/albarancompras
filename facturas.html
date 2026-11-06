@@ -1918,9 +1918,18 @@ $("generar").onclick = async () => {
       await unir(a.pdf ? a.pdf.base64 : buildPdf(a.photos));
     }
     const bytes = await out.save();
-    clearMsg();
-    const nombre = "Factura " + limpiaNombre(facturaInfo.numero_factura || "sin número") + " - " + limpiaNombre(facturaInfo.proveedor_coincidencia || facturaInfo.proveedor || "proveedor") + ".pdf";
-    abrirPdf(bytes, "Factura + " + total + (total === 1 ? " albarán" : " albaranes"), { nombre, ids: sel.map(c => c.id), marcado: false });
+    const nombre = limpiaNombre(facturaInfo.proveedor_coincidencia || facturaInfo.proveedor || "proveedor") + "_" + limpiaNombre(facturaInfo.numero_factura || "sin número") + ".pdf";
+    // Guardar en la carpeta compartida y marcar como facturados, todo en una sola llamada
+    showMsg("Guardando en la carpeta compartida y marcando como facturado…", "info-box");
+    let bin = ""; const CH = 0x8000;
+    for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    const ids = sel.map(c => Number(c.id));
+    const res = await llamarFlujo({ accion: "marcar", ids, factura: String(facturaInfo.numero_factura || ""), nombre, pdfBase64: btoa(bin) });
+    if (!res || res.ok !== true) throw new Error("el flujo no lo confirmó; no se ha guardado ni marcado nada");
+    candidatos = candidatos.filter(c => !ids.includes(c.id));
+    renderLista();
+    showMsg("✅ Guardado en la carpeta compartida como «" + nombre + "»" + (ids.length ? " y " + ids.length + " albaranes marcados como facturados." : "."), "info-box");
+    abrirPdf(bytes, "Factura + " + total + (total === 1 ? " albarán" : " albaranes"), { nombre });
   } catch (e) {
     showMsg("No se ha podido generar el PDF: " + ((e && e.message) || e), "error-box");
   } finally {
@@ -1929,33 +1938,14 @@ $("generar").onclick = async () => {
   }
 };
 
-$("pvDownload").onclick = async () => {
-  const acc = pvAccion;
-  if (!acc) return;
+$("pvDownload").onclick = () => {
+  if (!pvAccion) return;
   const a = document.createElement("a");
   a.href = pvUrl;
-  a.download = acc.nombre;
+  a.download = pvAccion.nombre;
   document.body.appendChild(a);
   a.click();
   a.remove();
-
-  if (acc.marcado || !acc.ids.length) return;
-  if (!confirm("PDF descargado.\n\n¿Marcar los " + acc.ids.length + " albaranes del registro como FACTURADOS con la factura " + (facturaInfo.numero_factura || "") + "?")) return;
-  try {
-    const res = await llamarFlujo({ accion: "marcar", ids: acc.ids.map(Number), factura: String(facturaInfo.numero_factura || "") });
-    if (!res || res.ok !== true) throw new Error("el flujo no lo confirmó");
-    acc.marcado = true;
-    candidatos = candidatos.filter(c => !acc.ids.includes(c.id));
-    renderLista();
-    $("pdfView").hidden = true;
-    $("pvFrame").src = "about:blank";
-    document.body.style.overflow = "";
-    showMsg("✅ " + acc.ids.length + " albaranes marcados como facturados.", "info-box");
-  } catch (e) {
-    showMsg("El PDF se ha descargado, pero no se han podido marcar los albaranes (" + ((e && e.message) || e) + "). Puedes volver a pulsar Descargar para reintentarlo.", "error-box");
-    $("pdfView").hidden = true;
-    document.body.style.overflow = "";
-  }
 };
 
 $("send").onclick = async () => {
