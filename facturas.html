@@ -653,6 +653,10 @@ input:focus {
   cursor: pointer;
 }
 
+#again {
+  margin-top: 14px;
+}
+
 a.pdf-btn {
   text-decoration: none;
   line-height: 1;
@@ -1032,6 +1036,7 @@ a.pdf-btn {
   <div class="ov-box">
     <p class="ov-title" id="pvTitle"></p>
     <iframe class="pv-frame" id="pvFrame" title="PDF"></iframe>
+    <p class="ov-help" id="pvNota" hidden>Este móvil no puede mostrar el PDF aquí. Pulsa «Descargar PDF» y ábrelo desde tus descargas.</p>
     <div class="ov-actions">
       <button type="button" class="primary-btn" id="pvDownload" hidden>⬇️ Descargar PDF</button>
       <a class="secondary-btn pv-link" id="pvOpen" target="_blank" rel="noopener">Abrir en otra pestaña</a>
@@ -1841,7 +1846,11 @@ function abrirPdf(bytes, titulo, descargar) {
   if (pvUrl) URL.revokeObjectURL(pvUrl);
   pvUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
   $("pvTitle").textContent = titulo;
-  $("pvFrame").src = pvUrl;
+  const inline = navigator.pdfViewerEnabled === undefined ? !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) : navigator.pdfViewerEnabled;
+  $("pvFrame").hidden = !inline;
+  $("pvOpen").hidden = !inline;
+  $("pvNota").hidden = inline || !descargar;
+  $("pvFrame").src = inline ? pvUrl : "about:blank";
   $("pvOpen").href = pvUrl;
   $("pvDownload").hidden = !descargar;
   pvAccion = descargar || null;
