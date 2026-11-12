@@ -545,6 +545,35 @@ input:focus {
 /* DATOS QUE FALTAN */
 /* ========================= */
 
+.inc-box {
+  margin-top: 14px;
+}
+
+.inc-box label {
+  display: block;
+  margin: 0 0 4px;
+  color: #333333;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.inc-box label small {
+  font-weight: 400;
+  color: #666666;
+}
+
+.inc-box textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
 .falta-box {
   margin-top: 14px;
   padding: 14px;
@@ -943,8 +972,7 @@ input:focus {
 
 <script>
 /* ===== CONFIGURACIÓN ===== */
-const FLOW_URL   = "https://default9057cb6da67347c7b025e86c6b54bd.2d.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/19/workflows/8f395d62d0224353b9f5c37544e9fd7e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=t2KhzetK1nk-sfHKZfqo28968BrrbRGtZEFs-KM05Oo"; // URL del disparador HTTP de Power Automate
-const LOGO_URL   = "https://daplast.com/wp-content/uploads/2024/10/Marca-Daplast-principal-3.png";  // dejar "" para no mostrar logo
+const FLOW_URL   = "https://default9057cb6da67347c7b025e86c6b54bd.2d.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/19/workflows/8f395d62d0224353b9f5c37544e9fd7e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=t2KhzetK1nk-sfHKZfqo28968BrrbRGtZEFs-KM05Oo"; // URL del disparador HTTP de Power Automate  const LOGO_URL   = "https://daplast.com/wp-content/uploads/2024/10/Marca-Daplast-principal-3.png";  // dejar "" para no mostrar logo
 const MAX_PX     = 1800;                          // lado mayor de cada foto
 const QUALITY    = 0.75;                          // calidad JPEG
 const MAX_PDF_MB = 15;                            // tamaño máximo de un PDF subido
@@ -1370,9 +1398,10 @@ let albaranes = [];     // { id, photos: [ {use, orig, crop, quad} ], pdf: {name
 let target = null;      // albarán al que irán los archivos que se elijan ahora
 let sending = false;
 let nextId = 1;
+let incPend = [];       // incidencias de albaranes ya enviados, pendientes de avisar por correo (se mandan con el último del lote)
 
 function newAlbaran() {
-  const a = { id: nextId++, photos: [], pdf: null, falta: null, manual: {}, forzar: false };
+  const a = { id: nextId++, photos: [], pdf: null, falta: null, manual: {}, forzar: false, incidencias: "" };
   albaranes.push(a);
   return a;
 }
@@ -1452,6 +1481,22 @@ function render() {
       x.onclick = () => { a.pdf = null; clearMsg(); render(); };
       pb.append(info, x);
       box.appendChild(pb);
+    }
+
+    if (!isEmpty(a)) {
+      const ib = el("div", "inc-box");
+      const lab = el("label", "", "Incidencias ");
+      lab.appendChild(el("small", "", "(solo si hay algo que avisar)"));
+      lab.htmlFor = "inc" + a.id;
+      const ta = document.createElement("textarea");
+      ta.id = "inc" + a.id;
+      ta.maxLength = 1000;
+      ta.placeholder = "Ej.: faltan 2 cajas, material dañado…";
+      ta.value = a.incidencias || "";
+      ta.disabled = isBusy();
+      ta.oninput = () => { a.incidencias = ta.value; };
+      ib.append(lab, ta);
+      box.appendChild(ib);
     }
 
     if (a.falta && a.falta.length) box.appendChild(faltaBox(a));
@@ -1627,6 +1672,9 @@ $("send").onclick = async () => {
         fotos: a.pdf ? null : a.photos.length,
         albaran: i + 1,
         totalAlbaranes: list.length,
+        incidencias: (a.incidencias || "").trim(),
+        ultimo: i === list.length - 1,
+        incidenciasPrevias: i === list.length - 1 ? incPend.slice() : [],
         pdfBase64: a.pdf ? a.pdf.base64 : buildPdf(a.photos)
       };
       // text/plain evita la comprobación previa (preflight) de CORS; el flujo responde con la cabecera Access-Control-Allow-Origin
@@ -1658,7 +1706,13 @@ $("send").onclick = async () => {
         }
       }
       sent++;
-      resumen.push(res || {});
+      const txtInc = (a.incidencias || "").trim();
+      if (i === list.length - 1) {
+        incPend = [];   // el flujo ha mandado el correo con todas las incidencias del lote
+      } else if (txtInc) {
+        incPend.push([(res && res.proveedor) || "Proveedor sin identificar", res && res.numero ? "nº " + res.numero : ""].filter(Boolean).join(" · ") + ": " + txtInc);
+      }
+      resumen.push(Object.assign({}, res || {}, { inc: !!txtInc }));
       albaranes = albaranes.filter(x => x !== a);   // los enviados desaparecen de la lista
       if (!albaranes.length) newAlbaran();
       render();
@@ -1673,7 +1727,7 @@ $("send").onclick = async () => {
       ul.replaceChildren();
       resumen.forEach(r => {
         const txt = [r.proveedor, r.numero ? "nº " + r.numero : ""].filter(Boolean).join(" · ") || "Albarán guardado";
-        ul.appendChild(el("li", "", (r.estado === "Revisar" ? "⚠️ " : "✅ ") + txt + (r.estado === "Revisar" ? " (guardado para revisar)" : "")));
+        ul.appendChild(el("li", "", (r.estado === "Revisar" ? "⚠️ " : "✅ ") + txt + (r.estado === "Revisar" ? " (guardado para revisar)" : "") + (r.inc ? " · incidencia avisada" : "")));
       });
       $("formView").hidden = true;
       $("doneView").hidden = false;
